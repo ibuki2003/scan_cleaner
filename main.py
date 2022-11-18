@@ -11,6 +11,8 @@ import paper_size
 from crop import process_page
 from xmap import xmap
 
+import time
+
 def cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dpi', required=True, type=int)
@@ -47,15 +49,20 @@ def cli():
             fn,
             (process_page(cv2.imread(fn), size, args.mode or 'color', args.level.split(',') if args.level else None))
         ),
-        args.input)
+        args.input,
+        processes=args.max_process,
+    )
     processed_images = list(processed_images)
 
     if args.output.endswith('.pdf'):
         with open(args.output,"wb") as f:
-            b = img2pdf.convert([
-                img_to_bytes(i[1])
-                for i in processed_images
-            ])
+            pages_bytes = xmap(
+                img_to_bytes,
+                [ i[1] for i in processed_images ],
+                processes=args.max_process,
+            )
+            # TODO: speedup; img2pdf is too slow
+            b = img2pdf.convert(pages_bytes)
             if b is not None:
                 f.write(b)
     else:
@@ -64,10 +71,13 @@ def cli():
             raise Exception('output is not directory')
         out.mkdir(exist_ok=True)
 
-        for fn, img in processed_images:
+
+        def save_img(entry):
+            img, fn = entry
             dest = out / fn
             dest.parent.mkdir(exist_ok=True)
             img.save(str(dest))
+        xmap(save_img, processed_images, processes=args.max_process)
 
 
 def img_to_bytes(img):

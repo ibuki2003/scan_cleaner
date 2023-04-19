@@ -12,12 +12,12 @@ def process_page(img, paper_size: Tuple[int, int], mode='color', level=None):
 
     # detect lines
     lines = cv2.ximgproc.createFastLineDetector(
-        300, # length_threshold
+        paper_size[0]//2, # length_threshold
         1, # distance_threshold
         50, # canny_th1
         50, # canny_th2
         3, # canny_aperture_size
-        False, # do_merge
+        True, # do_merge
     ).detect(bw)
 
     # for line in lines:

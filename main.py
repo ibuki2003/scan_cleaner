@@ -44,10 +44,12 @@ def cli():
     if args.input == ['-']:
         args.input = ( line.strip() for line in sys.stdin )
 
+    level = list(map(int, args.level.split(','))) if args.level else None
+
     processed_images = xmap(
         lambda fn: (
             fn,
-            (process_page(cv2.imread(fn), size, args.mode or 'color', args.level.split(',') if args.level else None))
+            process_page(cv2.imread(fn), size, args.mode or 'color', level)
         ),
         args.input,
         processes=args.max_process,
@@ -73,10 +75,10 @@ def cli():
 
 
         def save_img(entry):
-            img, fn = entry
+            fn, img = entry
             dest = out / fn
             dest.parent.mkdir(exist_ok=True)
-            img.save(str(dest))
+            cv2.imwrite(str(dest), img, [int(cv2.IMWRITE_PNG_COMPRESSION),9])
         xmap(save_img, processed_images, processes=args.max_process)
 
 
@@ -84,6 +86,7 @@ def img_to_bytes(img):
     img_bytes = io.BytesIO()
     if len(img.shape) == 3 and img.shape[2] == 3:
         # RGB
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         image = Image.fromarray(img, 'RGB')
         image.save(img_bytes, format='PNG')
     else:
